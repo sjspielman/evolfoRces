@@ -2,6 +2,8 @@ library(shiny)
 library(tidyverse)
 library(colourpicker)
 library(shinythemes)
+library(plotly)
+library(cowplot)
 
 
 ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "Evolutionary Forces Simulation",

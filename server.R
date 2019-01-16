@@ -2,6 +2,8 @@ library(tidyverse)
 library(cowplot)
 library(viridis) 
 library(plotly)
+library(colourpicker)
+library(shinythemes)
 
 shinyServer(function(input,output,session){
     source("./simul.R")
