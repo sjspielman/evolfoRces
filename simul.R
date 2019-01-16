@@ -5,24 +5,16 @@ ZERO <- 1e-10
 
 
 
-
-
-
-
-
 ### WE ONLY ARE KEEPING TRACK OF THE ISLAND!!!!!!!!!!!!! ###
-simulatePopulations.migration <- function(gen=100,
-                                  Waa=1,
-                                  Wab=0.95,
-                                  Wbb=0.9,
-                                  p.main=0.5,
-                                  p.island=0.5,
-                                  m=0)
+simulatePopulations.migration <- function(gen,
+                                  Waa,
+                                  Wab,
+                                  Wbb,
+                                  p.main,
+                                  p.island,
+                                  m)
 {  
 
-    ## Reset some limits ##
-    if (gen > 1000) gen = 1000
-    
     
     ## Calculate starting fitness
     w.start <- (p.island**2)*Waa + (2*p.island*(1-p.island)*Wab) + ((1-p.island)**2)*Wbb
@@ -75,22 +67,17 @@ simulatePopulations.migration <- function(gen=100,
 
 
 #main simulation function
-simulatePopulations.single <- function(gen=100,
-                                  p=0.5,
-                                  Waa=1,
-                                  Wab=0.95,
-                                  Wbb=0.9,
-                                  Uab=0,
-                                  Uba=0,                      
-                                  Neff=100,
-                                  infinitePop=F,
-                                  nRep=10)
+simulatePopulations.single <- function(gen,
+                                  p,
+                                  Waa,
+                                  Wab,
+                                  Wbb,
+                                  Uab,
+                                  Uba,                      
+                                  Neff,
+                                  infinitePop,
+                                  nRep)
 {  
-
-    ## Reset some limits ##
-    if (gen > 1000) gen = 1000
-    if (nRep > 100) nrep = 100
-    if (Neff > 1000000) Neff = 1000000
     
     ## Calculate starting fitness
     q <- 1 - p
