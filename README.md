@@ -1,4 +1,4 @@
-# evolforRces
+# evolfoRces
 
 Population genetics simulations for students to learn about **evol**utionary **foRces**. Consistent with CRAN Law, this package has a capital R in its name.
 
