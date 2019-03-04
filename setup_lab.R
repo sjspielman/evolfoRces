@@ -1,0 +1,6 @@
+install.packages("shiny")
+install.packages("shinythemes")
+install.packages("tidyverse")
+install.packages("cowplot")
+install.packages("colourpicker")
+install.packages("viridis")
