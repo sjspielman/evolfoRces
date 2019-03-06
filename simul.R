@@ -4,7 +4,7 @@ library(cowplot)
 library(viridis) 
 library(plotly)
 library(shinythemes)
-ZERO <- 1e-10
+ZERO <- 1e-7
 
 
 
@@ -42,16 +42,16 @@ simulatePopulations.migration <- function(gen,
             mean.w <- (p**2)*Waa + (2*p*(1-p)*Wab) + ((1-p)**2)*Wbb
             
             ## Ok seriously, rounding. Get it together R flops.
-            if (1 - p <= 1e-8) p <- 1
-            if (p <= 1e-8)    p <- 0
+            if (1 - p <= ZERO) p <- 1.0
+            if (p <= ZERO)    p <- 0.0
             
             
             # selection (reproduction) for next generation
             freq.aa <- (p*p*Waa)/mean.w
             freq.ab <- (2*p*(1-p)*Wab)/mean.w
             p <- freq.aa+(freq.ab/2)
-            if (1 - p <= 1e-8) p <- 1
-            if ( p <= 1e-8)    p <- 0
+            if (1 - p <= ZERO) p <- 1.0
+            if ( p <= ZERO)    p <- 0.0
             mean.w <- (p**2)*Waa + (2*p*(1-p)*Wab) + ((1-p)**2)*Wbb
         
 
@@ -113,9 +113,10 @@ simulatePopulations.single <- function(gen,
 
                 # NOT fixed
                 if( p > ZERO && (1 - p) > ZERO){
-                    # mean population fitness
+           
+                    # last mean population fitness
                     mean.w <- p * p * Waa + (2*p*q*Wab) + q * q * Wbb
-            
+
                     # post-selection genotype frequencies, weighted by relative fitness
                     freq.aa <- (p*p*Waa)/mean.w
                     freq.ab <- (2*p*q*Wab)/mean.w
@@ -139,14 +140,19 @@ simulatePopulations.single <- function(gen,
                         p <- freq.aa+(freq.ab/2)
                         q <- 1 - p
                     }
+                    
+                    # UPDATE mean population fitness
+                    mean.w <- p * p * Waa + (2*p*q*Wab) + q * q * Wbb
                 }
                 else { # Fixed at this round
                     if (p <= ZERO){
-                        p <- 0
+                        p <- 0.0
+                        q <- 1.0
                         mean.w <- p*p*Waa+2*p*q*Wab+q*q*Wbb
                     } 
                     else {
-                        p <- 1
+                        p <- 1.0
+                        q <- 0.0
                         mean.w <- p*p*Waa+2*p*q*Wab+q*q*Wbb
                     }
                 }

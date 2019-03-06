@@ -4,6 +4,7 @@ library(viridis)
 library(plotly)
 library(colourpicker)
 library(shinythemes)
+options(digits = 8)
 
 shinyServer(function(input,output,session){
     source("./simul.R")
@@ -21,52 +22,78 @@ shinyServer(function(input,output,session){
 
 
         result.header <- paste("Simulation results after", gen, "generations of evolution:")
-        result.table <- tibble("Replicate" = final.generation$population,
+        result.table <- tibble("Simulation Replicate" = final.generation$population,
                                "Allele A frequency" = final.generation$p, 
                                "Population fitness" = final.generation$w,
                                "Population heterozygosity" = final.generation$het)
 
 
+        #write_csv(sim.data, "sim.csv")
+        
+        sim.data %>% 
+            group_by(population) %>%
+            filter(generation == gen) %>%
+            mutate(fixed = ifelse(p == 1, TRUE, FALSE),
+                   lost = ifelse(p == 0, TRUE, FALSE)) -> sim.data.fixation
+        
+                            
         #### Check for fixation ####
-        sim.data %>% filter(generation == gen, p == 1) -> fixed.data
-        sim.data %>% filter(generation == gen, p == 0) -> lost.data
-        nfixed <- nrow(fixed.data)
-        nlost  <- nrow(lost.data)
+        wefixed <- sum(sim.data.fixation$fixed + sim.data.fixation$lost) > 0
 
-        wefixed <- sum(nfixed + nlost) > 0
+
         if (wefixed)
         {
-
-            #### There is about a 100% chance this can be vectorized. Alas, it is dinner time. ####
-            sim.data %>% filter(generation > 0, population %in% fixed.data$population) -> sim.fixed
-            sim.data %>% filter(generation > 0, population %in% lost.data$population) -> sim.lost
         
-            fix.loss.table <- tibble("allele" = as.character(), "gen" = as.integer())
+            fix.loss.table <- tibble("rep" = as.integer(), "allele" = as.character(), "gen" = as.integer())
         
-            for (i in unique(sim.fixed$population))
-            {
-                this <- sim.fixed %>% filter(population == i) %>% select(p)
-                when.fixed <- max(which(this$p != 1))
-                fix.loss.table <- bind_rows(fix.loss.table, tibble("allele" = "A", "gen" = when.fixed))
+            if (sum(sim.data.fixation$fixed) > 0){
+    
+                sim.data.fixation %>%
+                    ungroup() %>%
+                    filter(fixed == TRUE) %>%
+                    select(population) -> fixed.pops
+                
+                for (i in unique(fixed.pops$population))
+                {
+                    sim.data %>% 
+                        filter(population == i, p == 1) %>%
+                        select(generation) -> s2
+                    when.fixed <- min(s2$generation)
+                    fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "A", "gen" = when.fixed))
+                }
             }
-            for (i in unique(sim.lost$population))
-            {
-                this <- sim.lost %>% filter(population == i) %>% select(p) %>% mutate(p = 1-p)
-                when.fixed <- max(which(this$p != 1))
-                fix.loss.table <- bind_rows(fix.loss.table, tibble("allele" = "a", "gen" = when.fixed))
-            }       
+            if (sum(sim.data.fixation$lost) > 0){
+    
+                sim.data.fixation %>%
+                    ungroup() %>%
+                    filter(lost == TRUE) %>%
+                    select(population) -> lost.pops
+                
+                for (i in unique(lost.pops$population))
+                {
+                    sim.data %>% 
+                        filter(population == i, p == 0) %>%
+                        select(generation) -> s2
+                    when.lost <- min(s2$generation)
+                    fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "a", "gen" = when.lost))
+                }
+            }
+            
+            
+     
+            fix.loss.table$allele <- factor(fix.loss.table$allele, levels=c("A", "a"))
             fix.loss.table %>%
                 arrange(allele, gen) %>% 
-                group_by(allele) %>%
-                mutate("Replicate" = 1:n()) -> fix.loss.table
-            fix.loss.table <- fix.loss.table[,c(3,1,2)]
-            names(fix.loss.table) <- c("Replicate", "Allele Fixed", "Generation Fixed")
-            result.table <- left_join(result.table, fix.loss.table)
+                rename("Simulation Replicate" = rep, 
+                       "Allele Fixed" = allele, 
+                       "Generation Fixed" = gen) -> fix.loss.table
+
+            result.table <- left_join(result.table, fix.loss.table) %>% arrange(`Allele Fixed`)
         } else
         {
             result.table <- result.table %>% mutate("Allele Fixed" = "NA", "Generation Fixed" = "NA")
         }
-        
+    
         processed <- list(result.header, result.table)
         
     }                                
@@ -87,10 +114,16 @@ shinyServer(function(input,output,session){
         theme_set(theme_cowplot() + theme(legend.position = "none", 
                                             axis.text = element_text(size=t1),
                                             axis.title = element_text(size=t2)))
+                                            
+        sim.data %>% mutate(display_text_freq = paste("Frequency of A:", round(sim.data$p, 8)),
+                            display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) -> sim.data
+        
+        
 
+        sim.data %>% rename("Simulation Replicate" = population) -> sim.data
         if (plottype == "frequency")
         {
-        p1 <- ggplot(sim.data, aes(x = generation, y = p, group = population, color = population)) + 
+        p1 <- ggplot(sim.data, aes(x = generation, y = p, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
             geom_path(size=line.size) + 
             scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
             scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
@@ -100,7 +133,7 @@ shinyServer(function(input,output,session){
         }
         if (plottype == "fitness")
         {
-        p1 <- ggplot(sim.data, aes(x = generation, y = w, group = population, color = population)) + 
+        p1 <- ggplot(sim.data, aes(x = generation, y = w, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
             geom_path(size=line.size) + 
             scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
             scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
@@ -108,7 +141,7 @@ shinyServer(function(input,output,session){
             background_grid() + 
             xlab("Generation") + ylab("Mean population fitness")
         }
-        ggplotly(p1)       
+        ggplotly(p1, tooltip = c("group", "x", "y"))       
     }
 
 
@@ -185,17 +218,23 @@ shinyServer(function(input,output,session){
                                           infinitePop=infinitePop,
                                           nRep=nRep)
         
+        
+        
         processed <- process.simulation(sim.data, gen)
-             
+        
+        
+         
         result.header <- processed[[1]]
         result.table  <- processed[[2]]
-        result.table$Replicate <- as.integer(result.table$Replicate)
+
+        result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
+        result.table$`Generation Fixed` <- as.integer(result.table$`Generation Fixed`)
         
         output$result_header_s <- renderText({result.header})
 
         output$result_table_s <- renderTable(
             {as.data.frame( result.table )}, 
-            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8)
+            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8, rownames=TRUE)
             
         
         output$singleplot.frequency_s <- renderPlotly( { 
@@ -249,13 +288,14 @@ shinyServer(function(input,output,session){
              
         result.header <- processed[[1]]
         result.table  <- processed[[2]]
-        result.table$Replicate <- as.integer(result.table$Replicate)
+        result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
+        result.table$`Generation Fixed`     <- as.integer(result.table$`Generation Fixed`)
         
         output$result_header_m <- renderText({result.header})
 
         output$result_table_m <- renderTable(
             {as.data.frame( result.table )}, 
-            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8)
+            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8, rownames=TRUE)
             
         
         output$singleplot.frequency_m <- renderPlotly( { 
