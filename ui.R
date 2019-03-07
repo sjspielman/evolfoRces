@@ -6,7 +6,7 @@ library(plotly)
 library(cowplot)
 
 
-ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "Evolutionary Forces Simulation",
+ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "evolfoRces: Two-allele population genetics simulations",
     tabPanel("Single population",
         sidebarPanel(
             sliderInput("p","Starting allele frequency A",value=0.5,min=0,max=1),
@@ -41,14 +41,10 @@ ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "Evolutionary Forces S
                 tags$b(tableOutput("result_table_s"))
             ),
             br(),br(),br(),br(),br(),
-            div(style = "display:inline-block; height: 300px; width=300px; ",
+            div(style = "display:inline-block; height: 275px; width=300px; ",
                 plotlyOutput("singleplot.frequency_s", height = "100%", width = "100%"),
                 br(),br(),
                 plotlyOutput("singleplot.fitness_s", height = "100%", width = "100%")
-            ),
-            br(),br(),
-            div(style = "float:left",
-                uiOutput("downloaddata_s")
             )
         )
     ),
@@ -79,10 +75,6 @@ ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "Evolutionary Forces S
                 plotlyOutput("singleplot.frequency_m", height = "100%", width = "100%"),
                 br(),br(),
                 plotlyOutput("singleplot.fitness_m", height = "100%", width = "100%")
-            ),
-            br(),br(),
-            div(style = "float:left",
-                uiOutput("downloaddata_m")
             )
         )
     ),

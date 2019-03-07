@@ -141,7 +141,7 @@ shinyServer(function(input,output,session){
             background_grid() + 
             xlab("Generation") + ylab("Mean population fitness")
         }
-        ggplotly(p1, tooltip = c("group", "x", "y"))       
+        ggplotly(p1, tooltip = c("x", "y", "group"))       
     }
 
 
@@ -230,6 +230,8 @@ shinyServer(function(input,output,session){
         result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
         result.table$`Generation Fixed` <- as.integer(result.table$`Generation Fixed`)
         
+        result.table %>%
+            select(-`Simulation Replicate`, everything()) -> result.table
         output$result_header_s <- renderText({result.header})
 
         output$result_table_s <- renderTable(
@@ -244,14 +246,6 @@ shinyServer(function(input,output,session){
         output$singleplot.fitness_s <- renderPlotly( { 
             plot.simulation.single(sim.data, gen, "fitness")
         })
-
-        output$downloaddata_s <- renderUI({
-            downloadButton('download_data_s', 'Download Full Data')
-        })
-        output$download_data_s <- downloadHandler(
-            filename = function() {"simulation_data.csv" },
-            content = function(file) {write_csv(sim.data, file)}
-        )
 
     })
     
@@ -290,6 +284,8 @@ shinyServer(function(input,output,session){
         result.table  <- processed[[2]]
         result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
         result.table$`Generation Fixed`     <- as.integer(result.table$`Generation Fixed`)
+        result.table %>%
+            select(-`Simulation Replicate`, everything()) -> result.table
         
         output$result_header_m <- renderText({result.header})
 
@@ -306,13 +302,6 @@ shinyServer(function(input,output,session){
             plot.simulation.migration(sim.data, gen, line.color, "fitness")
         })
 
-        output$downloaddata_m <- renderUI({
-            downloadButton('download_data_s', 'Download Full Data')
-        })
-        output$download_data_m <- downloadHandler(
-            filename = function() {"simulation_data.csv" },
-            content = function(file) {write_csv(sim.data, file)}
-        )
 
 
 
