@@ -1,105 +1,25 @@
 library(tidyverse)
+library(ggrepel)
 library(cowplot)
 library(viridis) 
 library(plotly)
 library(colourpicker)
 library(shinythemes)
-options(digits = 8)
+library(DT)
+library(promises)
+library(future)
+plan(multiprocess)
 
+max.gen <- 1000
+max.rep <- 50
+max.n   <- 100000   
+round_table <- 4
+source("./simul.R")    
 shinyServer(function(input,output,session){
-    source("./simul.R")
+
     
-    max.gen <- 1000
-    max.rep <- 50
-    max.n   <- 100000                    
-                        
-    process.simulation <- function(sim.data, gen)
-    {
-        ## Table of final generation
-        sim.data %>% filter(generation == gen) -> final.generation
-
-        final.generation %>% mutate("het" = 2*p*(1-p)) -> final.generation
-
-
-        result.header <- paste("Simulation results after", gen, "generations of evolution:")
-        result.table <- tibble("Simulation Replicate" = final.generation$population,
-                               "Allele A frequency" = final.generation$p, 
-                               "Population fitness" = final.generation$w,
-                               "Population heterozygosity" = final.generation$het)
-
-
-        #write_csv(sim.data, "sim.csv")
-        
-        sim.data %>% 
-            group_by(population) %>%
-            filter(generation == gen) %>%
-            mutate(fixed = ifelse(p == 1, TRUE, FALSE),
-                   lost = ifelse(p == 0, TRUE, FALSE)) -> sim.data.fixation
-        
-                            
-        #### Check for fixation ####
-        wefixed <- sum(sim.data.fixation$fixed + sim.data.fixation$lost) > 0
-
-
-        if (wefixed)
-        {
-        
-            fix.loss.table <- tibble("rep" = as.integer(), "allele" = as.character(), "gen" = as.integer())
-        
-            if (sum(sim.data.fixation$fixed) > 0){
-    
-                sim.data.fixation %>%
-                    ungroup() %>%
-                    filter(fixed == TRUE) %>%
-                    select(population) -> fixed.pops
-                
-                for (i in unique(fixed.pops$population))
-                {
-                    sim.data %>% 
-                        filter(population == i, p == 1) %>%
-                        select(generation) -> s2
-                    when.fixed <- min(s2$generation)
-                    fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "A", "gen" = when.fixed))
-                }
-            }
-            if (sum(sim.data.fixation$lost) > 0){
-    
-                sim.data.fixation %>%
-                    ungroup() %>%
-                    filter(lost == TRUE) %>%
-                    select(population) -> lost.pops
-                
-                for (i in unique(lost.pops$population))
-                {
-                    sim.data %>% 
-                        filter(population == i, p == 0) %>%
-                        select(generation) -> s2
-                    when.lost <- min(s2$generation)
-                    fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "a", "gen" = when.lost))
-                }
-            }
-            
-            
-     
-            fix.loss.table$allele <- factor(fix.loss.table$allele, levels=c("A", "a"))
-            fix.loss.table %>%
-                arrange(allele, gen) %>% 
-                rename("Simulation Replicate" = rep, 
-                       "Allele Fixed" = allele, 
-                       "Generation Fixed" = gen) -> fix.loss.table
-
-            result.table <- left_join(result.table, fix.loss.table) %>% arrange(`Allele Fixed`)
-        } else
-        {
-            result.table <- result.table %>% mutate("Allele Fixed" = "NA", "Generation Fixed" = "NA")
-        }
-    
-        processed <- list(result.header, result.table)
-        
-    }                                
-                
-                
-                                          
+                 
+                                                         
     ####################### SINGLE POPULATION TAB ########################################
     ######################################################################################
 
@@ -111,25 +31,31 @@ shinyServer(function(input,output,session){
     plot.simulation.single <- function(sim.data, gen, plottype)
     {
 
-        theme_set(theme_cowplot() + theme(legend.position = "none", 
-                                            axis.text = element_text(size=t1),
-                                            axis.title = element_text(size=t2)))
+        theme_set(theme_cowplot() + theme(legend.position = "none",
+                                          plot.margin = margin(.1, 2, .1, .1, "cm"),))#, 
+                                           # axis.text = element_text(size=t1),
+                                           # axis.title = element_text(size=t2)))
                                             
-        sim.data %>% mutate(display_text_freq = paste("Frequency of A:", round(sim.data$p, 8)),
-                            display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) -> sim.data
-        
-        
+       # sim.data %>% mutate(display_text_freq = paste("Frequency of A:", round(sim.data$p, 8)),
+       #                     display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) -> sim.data
 
-        sim.data %>% rename("Simulation Replicate" = population) -> sim.data
+        sim.data %>% 
+            rename("Simulation Replicate" = population) %>%
+            mutate(repel_label = paste0("p = ", round(p, 4), "; w = ", round(w, 4))) -> sim.data
+        
         if (plottype == "frequency")
         {
         p1 <- ggplot(sim.data, aes(x = generation, y = p, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
             geom_path(size=line.size) + 
             scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
-            scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
+            scale_x_continuous(limits=c(0,gen+10), expand=c(0,0)) + 
             scale_color_viridis() + 
             background_grid() + 
-            xlab("Generation") + ylab("Frequency of allele A")
+            xlab("Generation") + ylab("Frequency of allele A") +
+            geom_label_repel(data = subset(sim.data, generation == max(generation)), 
+                  aes(label = repel_label),
+                  nudge_x = 1,
+                  na.rm = TRUE)
         }
         if (plottype == "fitness")
         {
@@ -141,7 +67,8 @@ shinyServer(function(input,output,session){
             background_grid() + 
             xlab("Generation") + ylab("Mean population fitness")
         }
-        ggplotly(p1, tooltip = c("x", "y", "group"))       
+        p1
+        #ggplotly(p1, tooltip = c("x", "y", "group"))       
     }
 
 
@@ -175,8 +102,7 @@ shinyServer(function(input,output,session){
     }        
 
 
-
-    ### Simulate, plot, summarize reactive to "Run Simulation!"
+    ###################### Generate simulation data upon go button ########################
     observeEvent(input$go_s,  {
 
         # isolate simulation parameters
@@ -204,50 +130,37 @@ shinyServer(function(input,output,session){
         if (gen > 1000) gen = max.gen
         if (nRep > 100) nrep = max.rep
         if (Neff > 100000) Neff = max.n
-    
-            
-
-        sim.data <- simulatePopulations.single(gen=gen,
-                                          p=p,
-                                          Waa=Waa,
-                                          Wab=Wab,
-                                          Wbb=Wbb,
-                                          Uab=Uab,
-                                          Uba=Uba,
-                                          Neff=Neff,
-                                          infinitePop=infinitePop,
-                                          nRep=nRep)
         
+        sim_data <- future(
+          simulatePopulations.single(gen=gen,
+                                     p=p,
+                                     Waa=Waa,
+                                     Wab=Wab,
+                                     Wbb=Wbb,
+                                     Uab=Uab,
+                                     Uba=Uba,
+                                     Neff=Neff,
+                                     infinitePop=infinitePop,
+                                     nRep=nRep))
+      
         
-        
-        processed <- process.simulation(sim.data, gen)
-        
-        
-         
-        result.header <- processed[[1]]
-        result.table  <- processed[[2]]
-
-        result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
-        result.table$`Generation Fixed` <- as.integer(result.table$`Generation Fixed`)
-        
-        result.table %>%
-            select(-`Simulation Replicate`, everything()) -> result.table
-        output$result_header_s <- renderText({result.header})
-
-        output$result_table_s <- renderTable(
-            {as.data.frame( result.table )}, 
-            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8, rownames=TRUE)
-            
-        
-        output$singleplot.frequency_s <- renderPlotly( { 
-            plot.simulation.single(sim.data, gen, "frequency")
+        output$result_header_s <- renderText({
+            paste("Simulation results after", gen, "generations of evolution:")
         })
 
-        output$singleplot.fitness_s <- renderPlotly( { 
-            plot.simulation.single(sim.data, gen, "fitness")
+        output$result_table_s <- renderDT(rownames= FALSE, server=FALSE, options = list(dom = 't'),
+            sim_data %...>% process.simulation(round_table)
+        )
+            
+        output$singleplot.frequency_s <- renderPlot( { 
+            sim_data %...>% plot.simulation.single(gen, "frequency")
         })
 
+        output$singleplot.fitness_s <- renderPlot( { 
+            sim_data %...>% plot.simulation.single(gen, "fitness")
+        })
     })
+
     
     
     

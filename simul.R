@@ -8,6 +8,100 @@ ZERO <- 1e-7
 
 
 
+process.simulation <- function(sim.data, round_table)
+{
+    
+    gen <- max(sim.data$generation)
+    
+    ## Table of final generation
+    sim.data %>% filter(generation == gen) -> final.generation
+
+    final.generation %>% mutate("het" = 2*p*(1-p)) -> final.generation
+
+
+    result.table <- tibble("Simulation Replicate" = final.generation$population,
+                           "Allele A frequency" = final.generation$p, 
+                           "Population fitness" = final.generation$w,
+                           "Population heterozygosity" = final.generation$het)
+
+
+    #write_csv(sim.data, "sim.csv")
+    
+    sim.data %>% 
+        group_by(population) %>%
+        filter(generation == gen) %>%
+        mutate(fixed = ifelse(p == 1, TRUE, FALSE),
+               lost = ifelse(p == 0, TRUE, FALSE)) -> sim.data.fixation
+    
+                        
+    #### Check for fixation ####
+    wefixed <- sum(sim.data.fixation$fixed + sim.data.fixation$lost) > 0
+
+
+    if (wefixed)
+    {
+    
+        fix.loss.table <- tibble("rep" = as.integer(), "allele" = as.character(), "gen" = as.integer())
+    
+        if (sum(sim.data.fixation$fixed) > 0){
+
+            sim.data.fixation %>%
+                ungroup() %>%
+                filter(fixed == TRUE) %>%
+                select(population) -> fixed.pops
+            
+            for (i in unique(fixed.pops$population))
+            {
+                sim.data %>% 
+                    filter(population == i, p == 1) %>%
+                    select(generation) -> s2
+                when.fixed <- min(s2$generation)
+                fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "A", "gen" = when.fixed))
+            }
+        }
+        if (sum(sim.data.fixation$lost) > 0){
+
+            sim.data.fixation %>%
+                ungroup() %>%
+                filter(lost == TRUE) %>%
+                select(population) -> lost.pops
+            
+            for (i in unique(lost.pops$population))
+            {
+                sim.data %>% 
+                    filter(population == i, p == 0) %>%
+                    select(generation) -> s2
+                when.lost <- min(s2$generation)
+                fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "a", "gen" = when.lost))
+            }
+        }
+        
+        
+ 
+        fix.loss.table$allele <- factor(fix.loss.table$allele, levels=c("A", "a"))
+        fix.loss.table %>%
+            arrange(allele, gen) %>% 
+            select(-rep) %>%
+            rename("Allele Fixed" = allele, 
+                   "Generation Fixed" = gen) -> fix.loss.table
+
+        print(names(result.table))
+        print(names(fix.loss.table))
+        
+        result.table <- left_join(result.table, fix.loss.table) %>% arrange(`Allele Fixed`)
+    } else
+    {
+        result.table <- result.table %>% mutate("Allele Fixed" = "-", "Generation Fixed" = "-")
+    }
+
+    result.table %>%
+        mutate(`Allele A frequency` = round(`Allele A frequency`, round_table),
+               `Population fitness` = round(`Population fitness`, round_table),
+               `Population heterozygosity` = round(`Population heterozygosity`, round_table)) %>%
+        replace(., is.na(.), "-")
+    
+}   
+    
 
 ### WE ONLY ARE KEEPING TRACK OF THE ISLAND!!!!!!!!!!!!! ###
 simulatePopulations.migration <- function(gen,

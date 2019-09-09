@@ -4,6 +4,7 @@ library(colourpicker)
 library(shinythemes)
 library(plotly)
 library(cowplot)
+library(DT)
 
 
 ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "evolfoRces: Two-allele population genetics simulations",
@@ -33,19 +34,17 @@ ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "evolfoRces: Two-allel
         mainPanel(
 
             br(), 
-            div(style = "float:center; font-size:18px",
+            div(style = "float:center; font-size:16px",
                 tags$b(textOutput("result_header_s"))
             ),
             br(),
-            div(style = "float:left; font-size:16px",
-                tags$b(tableOutput("result_table_s"))
+            div(style = "float:left; font-size:14px",
+                tags$b(DTOutput("result_table_s"))
             ),
             br(),br(),br(),br(),br(),
-            div(style = "display:inline-block; height: 275px; width=300px; ",
-                plotlyOutput("singleplot.frequency_s", height = "100%", width = "100%"),
+                plotOutput("singleplot.frequency_s"),
                 br(),br(),
-                plotlyOutput("singleplot.fitness_s", height = "100%", width = "100%")
-            )
+                plotOutput("singleplot.fitness_s")
         )
     ),
     tabPanel("Migration",
