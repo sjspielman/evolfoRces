@@ -1,12 +1,10 @@
 # SJS modification of original `dev.R` from driftR package
 library(tidyverse)
-library(cowplot)
 library(viridis) 
 library(plotly)
+
 library(shinythemes)
 ZERO <- 1e-7
-
-
 
 
 ### WE ONLY ARE KEEPING TRACK OF THE ISLAND!!!!!!!!!!!!! ###

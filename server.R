@@ -3,7 +3,7 @@ library(cowplot)
 library(viridis) 
 library(plotly)
 library(colourpicker)
-library(shinythemes)
+library(shinyWidgets)
 options(digits = 8)
 
 shinyServer(function(input,output,session){
@@ -12,7 +12,7 @@ shinyServer(function(input,output,session){
     max.gen <- 1000
     max.rep <- 50
     max.n   <- 100000                    
-                        
+
     process.simulation <- function(sim.data, gen)
     {
         ## Table of final generation
@@ -108,47 +108,54 @@ shinyServer(function(input,output,session){
     line.size <- 1
     t1 <- 12
     t2 <- 14
-    plot.simulation.single <- function(sim.data, gen, plottype)
+    plot.simulation.single <- function(sim.data, gen, line_color, is_infinite)
     {
 
-        theme_set(theme_cowplot() + theme(legend.position = "none", 
+        theme_set(theme_classic() + theme(legend.position = "none", 
                                             axis.text = element_text(size=t1),
                                             axis.title = element_text(size=t2)))
                                             
         sim.data %>% mutate(display_text_freq = paste("Frequency of A:", round(sim.data$p, 8)),
-                            display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) -> sim.data
+                            display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) %>% 
+                            rename("Simulation Replicate" = population) -> sim.data
         
-        
-
-        sim.data %>% rename("Simulation Replicate" = population) -> sim.data
-        if (plottype == "frequency")
-        {
-        p1 <- ggplot(sim.data, aes(x = generation, y = p, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
+                            
+                            
+        #if (plottype == "frequency")
+        #{
+        p1 <- ggplot(sim.data, aes(x = generation, y = p, group = `Simulation Replicate`, color = as.factor(`Simulation Replicate`))) + 
             geom_path(size=line.size) + 
             scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
             scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
-            scale_color_viridis() + 
             background_grid() + 
             xlab("Generation") + ylab("Frequency of allele A")
-        }
-        if (plottype == "fitness")
-        {
-        p1 <- ggplot(sim.data, aes(x = generation, y = w, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
+        #}
+        #if (plottype == "fitness")
+        #{
+        p2 <- ggplot(sim.data, aes(x = generation, y = w, group = `Simulation Replicate`, color = as.factor(`Simulation Replicate`))) + 
             geom_path(size=line.size) + 
             scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
             scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
-            scale_color_viridis() + 
             background_grid() + 
             xlab("Generation") + ylab("Mean population fitness")
-        }
-        ggplotly(p1, tooltip = c("x", "y", "group"))       
+        #}
+        
+        if (is_infinite) {
+            p1 <- p1 + scale_color_manual(values = line_color)
+            p2 <- p2 + scale_color_manual(values = line_color)
+        } else {
+            p1 <- p1 + scale_color_distiller(palette = line_color)
+            p2 <- p2 + scale_color_distiller(palette = line_color)
+        }    
+        plot_grid(p1, p2, nrow=1)
+        #ggplotly(p1, tooltip = c("x", "y", "group"))       
     }
 
 
 
     plot.simulation.migration <- function(sim.data, gen, line.color, plottype)
     {
-        theme_set(theme_cowplot() + theme(axis.text = element_text(size=t1),
+        theme_set(theme_classic() + theme(axis.text = element_text(size=t1),
                                             axis.title = element_text(size=t2),
                                             legend.position = "none"))
 
@@ -176,6 +183,9 @@ shinyServer(function(input,output,session){
 
 
 
+    sim.data <- reactiveValues()
+
+
     ### Simulate, plot, summarize reactive to "Run Simulation!"
     observeEvent(input$go_s,  {
 
@@ -187,7 +197,7 @@ shinyServer(function(input,output,session){
         Wbb <- as.numeric(isolate(input$Wbb_s))
         Uab <- as.numeric(isolate(input$Uab))
         Uba <- as.numeric(isolate(input$Uba))
-
+        line_color <- isolate(input$line_color)
         usedrift <- ifelse( isolate(input$usedrift) == "drift", TRUE, FALSE )  
         infinitePop <- ifelse(usedrift==FALSE,TRUE,FALSE)
         if (infinitePop)
@@ -207,7 +217,7 @@ shinyServer(function(input,output,session){
     
             
 
-        sim.data <- simulatePopulations.single(gen=gen,
+        sim.data$results <- simulatePopulations.single(gen=gen,
                                           p=p,
                                           Waa=Waa,
                                           Wab=Wab,
@@ -217,10 +227,11 @@ shinyServer(function(input,output,session){
                                           Neff=Neff,
                                           infinitePop=infinitePop,
                                           nRep=nRep)
+        sim.data$gen <- gen
         
         
         
-        processed <- process.simulation(sim.data, gen)
+        processed <- process.simulation(sim.data$results, gen)
         
         
          
@@ -239,18 +250,63 @@ shinyServer(function(input,output,session){
             striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8, rownames=TRUE)
             
         
-        output$singleplot.frequency_s <- renderPlotly( { 
-            plot.simulation.single(sim.data, gen, "frequency")
+        output$singleplot.frequency_s <- renderPlot( { 
+            print( plot.simulation.single(sim.data$results, gen, line_color, infinitePop) )
         })
 
-        output$singleplot.fitness_s <- renderPlotly( { 
-            plot.simulation.single(sim.data, gen, "fitness")
-        })
+        #output$singleplot.fitness_s <- renderPlotly( { 
+        #    plot.simulation.single(sim.data$results, gen, "fitness")
+        #})
+
 
     })
     
     
+    observeEvent(input$save_single_frequency_btn,  {
+        inputSweetAlert(
+            session = session, inputId = "save_single_frequency_name",
+            title = "Name for your stashed single frequency plot?"
+        )    
+       sim.data$last_results <- sim.data$results
+       sim.data$last_gen <- sim.data$gen        
+    })
     
+    #les_deux <- reactive( list(input$save_single_frequency_btn, input$save_single_frequency_name) )
+    
+    
+    observeEvent(input$save_single_frequency_name, {
+        output$plot_saved_plot <- renderPlot({
+            print( plot.simulation.single(sim.data$results, gen, line_color, infinitePop) + 
+                         ggtitle(input$save_single_frequency_name)
+                )
+        })
+    })    
+    
+    observeEvent(input$clear_single_frequency_btn, {
+        output$plot_saved_plot <- renderPlot({})
+    })
+    
+
+
+
+#     observeEvent(input$save_single_frequency_btn,  {
+#         inputSweetAlert(
+#             session = session, inputId = "save_single_frequency_name",
+#             title = "Name for your stashed single frequency plot?"
+#         )    
+#        sim.data$last_results <- sim.data$results
+#        sim.data$last_gen <- sim.data$gen
+#       # sim.data$last_title <- input$save_single_frequency_name
+#     
+#             
+#         output$plot_saved_plot <- renderPlot({
+#             plot.simulation.single(sim.data$last_results, sim.data$last_gen, "frequency") + ggtitle(input$save_single_frequency_name)
+#         })
+#     })    
+#     
+# 
+
+
     
     ######################################################################################
     ############################### MIGRATION TAB ########################################

@@ -2,8 +2,41 @@ library(shiny)
 library(tidyverse)
 library(colourpicker)
 library(shinythemes)
+library(shinyWidgets)
+library(RColorBrewer)
 library(plotly)
-library(cowplot)
+#library(cowplot)
+
+
+#################################################################################################
+### Code to setup a palette picker, modified from https://dreamrs.github.io/shinyWidgets/articles/palette_picker.html
+brewer.pal.info %>% 
+    rownames_to_column("palette") %>%
+    filter(category == "seq", colorblind == TRUE) %>%
+    arrange(desc(category)) -> brewer.palettes
+seq.list <- list("Color palettes" = brewer.palettes$palette[brewer.palettes$category == "seq"]) 
+
+brewer.palettes.hex <- brewer.palettes %>% mutate(colorlist = map2(maxcolors,palette, brewer.pal))
+palette.list <- setNames(as.list(brewer.palettes.hex$colorlist), brewer.palettes.hex$palette)
+
+linear_gradient <- function(cols) {
+  x <- round(seq(from = 0, to = 100, length.out = length(cols)+1))
+  ind <- c(1, rep(seq_along(x)[-c(1, length(x))], each = 2), length(x))
+  m <- matrix(data = paste0(x[ind], "%"), ncol = 2, byrow = TRUE)
+  res <- lapply(
+    X = seq_len(nrow(m)),
+    FUN = function(i) {
+      paste(paste(cols[i], m[i, 1]), paste(cols[i], m[i, 2]), sep = ", ")
+    }
+  )
+  res <- unlist(res)
+  res <- paste(res, collapse = ", ")
+  paste0("linear-gradient(to right, ", res, ");")
+}
+palette.linear.gradient <- unlist(lapply(X = palette.list, FUN = linear_gradient))
+palette.label.colors <- "black"
+#################################################################################################
+
 
 
 ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "evolfoRces: Two-allele population genetics simulations",
@@ -27,7 +60,23 @@ ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "evolfoRces: Two-allel
             conditionalPanel(condition = "input.usedrift == 'drift'",
                 {numericInput("nRep","Number of Replicate Populations (maximum 50)",value = 10)}
             ),
-            br(),
+            
+            
+            conditionalPanel(condition = "input.usedrift == 'infinite'",   
+                {colourpicker::colourInput("line_color", "Color:", value = "blue")}
+            ),      
+            conditionalPanel(condition = "input.usedrift == 'drift'",   
+                {pickerInput("line_palette", label = "Palette:",
+                    choices = seq.list, selected = "Greens", width = "90%",
+                    choicesOpt = list(
+                        content = sprintf(
+                            "<div style='width:700%%;border-radius:4px;background:%s;color:%s;font-weight:400;font-size:16px;'>%s</div>",
+                            unname(palette.linear.gradient), palette.label.colors, names(palette.linear.gradient)
+                        )
+                    )
+                )}
+            ),         
+            br(), 
             actionButton("go_s","Run Simulation!",width="100%")
         ),
         mainPanel(
@@ -36,16 +85,23 @@ ui <- shinyUI(navbarPage(theme = shinytheme("sandstone"), "evolfoRces: Two-allel
             div(style = "float:center; font-size:18px",
                 tags$b(textOutput("result_header_s"))
             ),
-            br(),
-            div(style = "float:left; font-size:16px",
-                tags$b(tableOutput("result_table_s"))
-            ),
+            #br(),
+            #div(style = "float:left; font-size:16px",
+            #    tags$b(tableOutput("result_table_s"))
+            #),
             br(),br(),br(),br(),br(),
-            div(style = "display:inline-block; height: 275px; width=300px; ",
-                plotlyOutput("singleplot.frequency_s", height = "100%", width = "100%"),
-                br(),br(),
-                plotlyOutput("singleplot.fitness_s", height = "100%", width = "100%")
+            #div(style = "display:inline-block; height:25%; width:80%; ",
+            plotOutput("singleplot.frequency_s", height = "100%", width = "50%"),
+            div(style = "display:inline-block; float:right;",
+                actionButton(inputId = "save_single_frequency_btn", label = "Click to stash this plot.")
+            ),
+            br(),br(),
+                plotOutput("plot_saved_plot"),
+            div(style = "display:inline-block; float:right;",
+                actionButton(inputId = "clear_single_frequency_btn", label = "Click to clear this plot stash.")
             )
+                #plotlyOutput("singleplot.fitness_s", height = "100%", width = "100%")
+            #)
         )
     ),
     tabPanel("Migration",
