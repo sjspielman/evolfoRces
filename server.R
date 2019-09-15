@@ -1,189 +1,24 @@
 library(tidyverse)
 library(cowplot)
-library(viridis) 
-library(plotly)
-library(colourpicker)
 library(shinyWidgets)
-options(digits = 8)
+library(colourpicker)
+library(DT)
+library(promises)
+library(future)
+plan(multiprocess)
+
+options(htmlwidgets.TOJSON_ARGS = list(na = 'string')) ## Make NA in DT show as NA instead of blank cell
 
 shinyServer(function(input,output,session){
     source("./simul.R")
     
-    max.gen <- 1000
-    max.rep <- 50
-    max.n   <- 100000                    
 
-    process.simulation <- function(sim.data, gen)
-    {
-        ## Table of final generation
-        sim.data %>% filter(generation == gen) -> final.generation
-
-        final.generation %>% mutate("het" = 2*p*(1-p)) -> final.generation
-
-
-        result.header <- paste("Simulation results after", gen, "generations of evolution:")
-        result.table <- tibble("Simulation Replicate" = final.generation$population,
-                               "Allele A frequency" = final.generation$p, 
-                               "Population fitness" = final.generation$w,
-                               "Population heterozygosity" = final.generation$het)
-
-
-        #write_csv(sim.data, "sim.csv")
-        
-        sim.data %>% 
-            group_by(population) %>%
-            filter(generation == gen) %>%
-            mutate(fixed = ifelse(p == 1, TRUE, FALSE),
-                   lost = ifelse(p == 0, TRUE, FALSE)) -> sim.data.fixation
-        
-                            
-        #### Check for fixation ####
-        wefixed <- sum(sim.data.fixation$fixed + sim.data.fixation$lost) > 0
-
-
-        if (wefixed)
-        {
-        
-            fix.loss.table <- tibble("rep" = as.integer(), "allele" = as.character(), "gen" = as.integer())
-        
-            if (sum(sim.data.fixation$fixed) > 0){
-    
-                sim.data.fixation %>%
-                    ungroup() %>%
-                    filter(fixed == TRUE) %>%
-                    select(population) -> fixed.pops
-                
-                for (i in unique(fixed.pops$population))
-                {
-                    sim.data %>% 
-                        filter(population == i, p == 1) %>%
-                        select(generation) -> s2
-                    when.fixed <- min(s2$generation)
-                    fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "A", "gen" = when.fixed))
-                }
-            }
-            if (sum(sim.data.fixation$lost) > 0){
-    
-                sim.data.fixation %>%
-                    ungroup() %>%
-                    filter(lost == TRUE) %>%
-                    select(population) -> lost.pops
-                
-                for (i in unique(lost.pops$population))
-                {
-                    sim.data %>% 
-                        filter(population == i, p == 0) %>%
-                        select(generation) -> s2
-                    when.lost <- min(s2$generation)
-                    fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "a", "gen" = when.lost))
-                }
-            }
-            
-            
-     
-            fix.loss.table$allele <- factor(fix.loss.table$allele, levels=c("A", "a"))
-            fix.loss.table %>%
-                arrange(allele, gen) %>% 
-                rename("Simulation Replicate" = rep, 
-                       "Allele Fixed" = allele, 
-                       "Generation Fixed" = gen) -> fix.loss.table
-
-            result.table <- left_join(result.table, fix.loss.table) %>% arrange(`Allele Fixed`)
-        } else
-        {
-            result.table <- result.table %>% mutate("Allele Fixed" = "NA", "Generation Fixed" = "NA")
-        }
-    
-        processed <- list(result.header, result.table)
-        
-    }                                
-                
-                
+    current_simulation <- reactiveValues()
+    stored_simulation <- reactiveValues()
+           
                                           
     ####################### SINGLE POPULATION TAB ########################################
     ######################################################################################
-
-
-
-    line.size <- 1
-    t1 <- 12
-    t2 <- 14
-    plot.simulation.single <- function(sim.data, gen, line_color, is_infinite)
-    {
-
-        theme_set(theme_classic() + theme(legend.position = "none", 
-                                            axis.text = element_text(size=t1),
-                                            axis.title = element_text(size=t2)))
-                                            
-        sim.data %>% mutate(display_text_freq = paste("Frequency of A:", round(sim.data$p, 8)),
-                            display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) %>% 
-                            rename("Simulation Replicate" = population) -> sim.data
-        
-                            
-                            
-        #if (plottype == "frequency")
-        #{
-        p1 <- ggplot(sim.data, aes(x = generation, y = p, group = `Simulation Replicate`, color = as.factor(`Simulation Replicate`))) + 
-            geom_path(size=line.size) + 
-            scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
-            scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
-            background_grid() + 
-            xlab("Generation") + ylab("Frequency of allele A")
-        #}
-        #if (plottype == "fitness")
-        #{
-        p2 <- ggplot(sim.data, aes(x = generation, y = w, group = `Simulation Replicate`, color = as.factor(`Simulation Replicate`))) + 
-            geom_path(size=line.size) + 
-            scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
-            scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
-            background_grid() + 
-            xlab("Generation") + ylab("Mean population fitness")
-        #}
-        
-        if (is_infinite) {
-            p1 <- p1 + scale_color_manual(values = line_color)
-            p2 <- p2 + scale_color_manual(values = line_color)
-        } else {
-            p1 <- p1 + scale_color_distiller(palette = line_color)
-            p2 <- p2 + scale_color_distiller(palette = line_color)
-        }    
-        plot_grid(p1, p2, nrow=1)
-        #ggplotly(p1, tooltip = c("x", "y", "group"))       
-    }
-
-
-
-    plot.simulation.migration <- function(sim.data, gen, line.color, plottype)
-    {
-        theme_set(theme_classic() + theme(axis.text = element_text(size=t1),
-                                            axis.title = element_text(size=t2),
-                                            legend.position = "none"))
-
-
-        if (plottype == "frequency")
-        {
-         p2 <- ggplot(sim.data, aes(x = generation, y = p)) + 
-            geom_path(size = line.size, color = line.color) + 
-            scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
-            scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) +  
-            background_grid() + 
-            xlab("Generation") + ylab("Frequency of allele A (island)")
-        }
-        if (plottype == "fitness")
-        {
-        p2 <- ggplot(sim.data, aes(x = generation, y = w)) + 
-            geom_path(size = line.size, color = line.color) +   
-            scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
-            scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
-            background_grid() + 
-            xlab("Generation") + ylab("Mean population fitness (island)")
-        }
-        ggplotly(p2)
-    }        
-
-
-
-    sim.data <- reactiveValues()
 
 
     ### Simulate, plot, summarize reactive to "Run Simulation!"
@@ -197,7 +32,8 @@ shinyServer(function(input,output,session){
         Wbb <- as.numeric(isolate(input$Wbb_s))
         Uab <- as.numeric(isolate(input$Uab))
         Uba <- as.numeric(isolate(input$Uba))
-        line_color <- isolate(input$line_color)
+
+
         usedrift <- ifelse( isolate(input$usedrift) == "drift", TRUE, FALSE )  
         infinitePop <- ifelse(usedrift==FALSE,TRUE,FALSE)
         if (infinitePop)
@@ -211,102 +47,85 @@ shinyServer(function(input,output,session){
         }
         
         ## Reset some limits ##
-        if (gen > 1000) gen = max.gen
-        if (nRep > 100) nrep = max.rep
-        if (Neff > 100000) Neff = max.n
+        if (gen > max.gen) gen = max.gen
+        if (nRep > max.rep) nrep = max.rep
+        if (Neff > max.n) Neff = max.n
     
             
 
-        sim.data$results <- simulatePopulations.single(gen=gen,
-                                          p=p,
-                                          Waa=Waa,
-                                          Wab=Wab,
-                                          Wbb=Wbb,
-                                          Uab=Uab,
-                                          Uba=Uba,
-                                          Neff=Neff,
-                                          infinitePop=infinitePop,
-                                          nRep=nRep)
-        sim.data$gen <- gen
-        
-        
-        
-        processed <- process.simulation(sim.data$results, gen)
-        
-        
-         
-        result.header <- processed[[1]]
-        result.table  <- processed[[2]]
+       simulation_data <- future( simulatePopulations.single(gen=gen,
+                                                             p=p,
+                                                             Waa=Waa,
+                                                             Wab=Wab,
+                                                             Wbb=Wbb,
+                                                             Uab=Uab,
+                                                             Uba=Uba,
+                                                             Neff=Neff,
+                                                             infinitePop=infinitePop,
+                                                             nRep=nRep))
+                                
 
-        result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
-        result.table$`Generation Fixed` <- as.integer(result.table$`Generation Fixed`)
-        
-        result.table %>%
-            select(-`Simulation Replicate`, everything()) -> result.table
-        output$result_header_s <- renderText({result.header})
+        current_simulation$data <- simulation_data
+        current_simulation$gen <- gen
+        current_simulation$infinitePop <- infinitePop
 
-        output$result_table_s <- renderTable(
-            {as.data.frame( result.table )}, 
-            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8, rownames=TRUE)
-            
+
+        output$single_table <- renderDT(rownames= FALSE, server=FALSE, 
+                                options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
+            simulation_data %...>% process_simulation(gen)
+        )
         
-        output$singleplot.frequency_s <- renderPlot( { 
-            print( plot.simulation.single(sim.data$results, gen, line_color, infinitePop) )
+          
+        output$single_plot <- renderPlot( { 
+            simulation_data %...>% {
+                simulation_data_df <- .
+                plot_simulation(simulation_data_df, gen, input$line_color_s, infinitePop)
+            }
         })
-
-        #output$singleplot.fitness_s <- renderPlotly( { 
-        #    plot.simulation.single(sim.data$results, gen, "fitness")
-        #})
-
 
     })
     
     
-    observeEvent(input$save_single_frequency_btn,  {
+    observeEvent(input$store_single_btn,  {
         inputSweetAlert(
-            session = session, inputId = "save_single_frequency_name",
-            title = "Name for your stashed single frequency plot?"
+            session = session, inputId = "store_single_name",
+            title = "Name for your stored results?",
+            type = "warning"
         )    
-       sim.data$last_results <- sim.data$results
-       sim.data$last_gen <- sim.data$gen        
+       stored_simulation$data        <- current_simulation$data
+       stored_simulation$gen         <- current_simulation$gen
+       stored_simulation$infinitePop <- current_simulation$infinitePop     
+       stored_simulation$line_color  <- input$line_color_s
     })
+        
+    observeEvent(input$store_single_name, {
     
-    #les_deux <- reactive( list(input$save_single_frequency_btn, input$save_single_frequency_name) )
-    
-    
-    observeEvent(input$save_single_frequency_name, {
-        output$plot_saved_plot <- renderPlot({
-            print( plot.simulation.single(sim.data$results, gen, line_color, infinitePop) + 
-                         ggtitle(input$save_single_frequency_name)
-                )
-        })
+        output$single_plot_stored <- renderPlot({
+            stored_simulation$data %...>% {
+                stored_simulation_df <- .
+                plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
+            }
+        })        
+        
+        output$single_table_stored <- renderDT(rownames= FALSE, server=FALSE, 
+                                                    options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
+            stored_simulation$data %...>% {
+                stored_simulation_df <- .
+                process_simulation(stored_simulation_df, stored_simulation$gen)
+            }
+        )
+        
+        output$single_name_stored <- renderText({input$store_single_name})
+
     })    
     
-    observeEvent(input$clear_single_frequency_btn, {
-        output$plot_saved_plot <- renderPlot({})
+    observeEvent(input$clear_single_btn, {
+        stored_simulation <- reactiveValues()
+        output$single_name_stored  <- renderText({})
+        output$single_table_stored <- renderDT({})
+        output$single_plot_stored <- renderPlot({})
     })
     
-
-
-
-#     observeEvent(input$save_single_frequency_btn,  {
-#         inputSweetAlert(
-#             session = session, inputId = "save_single_frequency_name",
-#             title = "Name for your stashed single frequency plot?"
-#         )    
-#        sim.data$last_results <- sim.data$results
-#        sim.data$last_gen <- sim.data$gen
-#       # sim.data$last_title <- input$save_single_frequency_name
-#     
-#             
-#         output$plot_saved_plot <- renderPlot({
-#             plot.simulation.single(sim.data$last_results, sim.data$last_gen, "frequency") + ggtitle(input$save_single_frequency_name)
-#         })
-#     })    
-#     
-# 
-
-
     
     ######################################################################################
     ############################### MIGRATION TAB ########################################
@@ -324,44 +143,83 @@ shinyServer(function(input,output,session){
         Wab <- as.numeric(isolate(input$Wab_m))
         Wbb <- as.numeric(isolate(input$Wbb_m))
     
-        line.color <- isolate(input$yaycolor)
+
+        ## Reset some limits ##
+        if (gen > max.gen) gen = max.gen
+        infinitePop <- TRUE
+
         # simulate
-        sim.data <- simulatePopulations.migration(gen=gen,
+        simulation_data <- future( simulatePopulations.migration(gen=gen,
                                                   p.main = p.main,
                                                   p.island = p.island,
                                                   m = m,
                                                   Waa=Waa,
                                                   Wab=Wab,
-                                                  Wbb=Wbb) %>% mutate("population" = 1)
+                                                  Wbb=Wbb) %>% 
+                                     mutate("population" = 1))
 
-        processed <- process.simulation(sim.data, gen)
-             
-        result.header <- processed[[1]]
-        result.table  <- processed[[2]]
-        result.table$`Simulation Replicate` <- as.integer(result.table$`Simulation Replicate`)
-        result.table$`Generation Fixed`     <- as.integer(result.table$`Generation Fixed`)
-        result.table %>%
-            select(-`Simulation Replicate`, everything()) -> result.table
+
+        current_simulation$data <- simulation_data
+        current_simulation$gen <- gen
+        current_simulation$infinitePop <- infinitePop
+
+
+        output$migration_table <- renderDT(rownames= FALSE, server=FALSE, 
+                                options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
+            simulation_data %...>% process_simulation(gen)
+        )
         
-        output$result_header_m <- renderText({result.header})
-
-        output$result_table_m <- renderTable(
-            {as.data.frame( result.table )}, 
-            striped=TRUE, hover=TRUE, bordered=TRUE, align="l", digits=8, rownames=TRUE)
-            
-        
-        output$singleplot.frequency_m <- renderPlotly( { 
-            plot.simulation.migration(sim.data, gen, line.color, "frequency")
+          
+        output$migration_plot <- renderPlot( { 
+            simulation_data %...>% {
+                simulation_data_df <- .
+                plot_simulation(simulation_data_df, gen, input$line_color_m, infinitePop)
+            }
         })
-
-        output$singleplot.fitness_m <- renderPlotly( { 
-            plot.simulation.migration(sim.data, gen, line.color, "fitness")
-        })
-
-
-
 
     })
+    
+    
+    observeEvent(input$store_migration_btn,  {
+        inputSweetAlert(
+            session = session, inputId = "store_migration_name",
+            title = "Name for your stored results?",
+            type = "warning"
+        )    
+       stored_simulation$data        <- current_simulation$data
+       stored_simulation$gen         <- current_simulation$gen
+       stored_simulation$infinitePop <- current_simulation$infinitePop     
+       stored_simulation$line_color  <- input$line_color_m
+    })
+        
+    observeEvent(input$store_migration_name, {
+    
+        output$migration_plot_stored <- renderPlot({
+            stored_simulation$data %...>% {
+                stored_simulation_df <- .
+                plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
+            }
+        })        
+        
+        output$migration_table_stored <- renderDT(rownames= FALSE, server=FALSE, 
+                                                    options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
+            stored_simulation$data %...>% {
+                stored_simulation_df <- .
+                process_simulation(stored_simulation_df, stored_simulation$gen)
+            }
+        )
+        
+        output$migration_name_stored <- renderText({input$store_migration_name})
+
+    })    
+    
+    observeEvent(input$clear_migration_btn, {
+        stored_simulation <- reactiveValues()
+        output$migration_name_stored  <- renderText({})
+        output$migration_table_stored <- renderDT({})
+        output$migration_plot_stored <- renderPlot({})
+    })
+    
 
 
 })

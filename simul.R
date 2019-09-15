@@ -1,11 +1,148 @@
 # SJS modification of original `dev.R` from driftR package
 library(tidyverse)
-library(viridis) 
-library(plotly)
+library(viridis)
 
-library(shinythemes)
 ZERO <- 1e-7
+max.gen <- 1000
+max.rep <- 50
+max.n   <- 100000                    
 
+
+line.size <- 1
+t1 <- 12
+t2 <- 14
+theme_set(theme_classic() + theme(legend.position = "none", 
+                                  axis.text = element_text(size=t1),
+                                  axis.title = element_text(size=t2)))
+
+plot_simulation <- function(sim.data, gen, line_color, is_infinite)
+{
+
+                                        
+    sim.data %>% mutate(display_text_freq = paste("Frequency of A:", round(sim.data$p, 8)),
+                        display_text_fit = paste("Mean population fitness:", round(sim.data$w, 8))) %>% 
+                        rename("Simulation Replicate" = population) -> sim.data
+    
+    if (is_infinite) sim.data$`Simulation Replicate` <- factor(sim.data$`Simulation Replicate`)
+
+
+    p1 <- ggplot(sim.data, aes(x = generation, y = p, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
+        geom_path(size=line.size) + 
+        scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
+        scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
+        background_grid() + 
+        xlab("Generation") + ylab("Frequency of allele A")
+
+    p2 <- ggplot(sim.data, aes(x = generation, y = w, group = `Simulation Replicate`, color = `Simulation Replicate`)) + 
+        geom_path(size=line.size) + 
+        scale_y_continuous(limits=c(0,1.1), expand=c(0,0)) + 
+        scale_x_continuous(limits=c(0,gen+5), expand=c(0,0)) + 
+        background_grid() + 
+        xlab("Generation") + ylab("Mean population fitness")
+
+
+    if (is_infinite) {
+        p1 <- p1 + scale_color_manual(values = line_color)
+        p2 <- p2 + scale_color_manual(values = line_color)
+    } else {
+        p1 <- p1 + scale_color_viridis()
+        p2 <- p2 + scale_color_viridis()
+    }    
+    plot_grid(p1, p2, nrow=1, scale = 0.9)
+}
+
+
+
+process_simulation <- function(sim.data, gen)
+{
+    ## Table of final generation
+    sim.data %>% filter(generation == gen) -> final.generation
+
+    final.generation %>% mutate("het" = 2*p*(1-p)) -> final.generation
+
+
+    result.table <- tibble("Simulation Replicate" = final.generation$population,
+                           "Allele A frequency" = final.generation$p, 
+                           "Population fitness" = final.generation$w,
+                           "Population heterozygosity" = final.generation$het)
+
+
+    #write_csv(sim.data, "sim.csv")
+    
+    sim.data %>% 
+        group_by(population) %>%
+        filter(generation == gen) %>%
+        mutate(fixed = ifelse(p == 1, TRUE, FALSE),
+               lost = ifelse(p == 0, TRUE, FALSE)) -> sim.data.fixation
+    
+                        
+    #### Check for fixation ####
+    wefixed <- sum(sim.data.fixation$fixed + sim.data.fixation$lost) > 0
+
+
+    if (wefixed)
+    {
+    
+        fix.loss.table <- tibble("rep" = as.integer(), "allele" = as.character(), "gen" = as.integer())
+    
+        if (sum(sim.data.fixation$fixed) > 0){
+
+            sim.data.fixation %>%
+                ungroup() %>%
+                filter(fixed == TRUE) %>%
+                select(population) -> fixed.pops
+            
+            for (i in unique(fixed.pops$population))
+            {
+                sim.data %>% 
+                    filter(population == i, p == 1) %>%
+                    select(generation) -> s2
+                when.fixed <- min(s2$generation)
+                fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "A", "gen" = when.fixed))
+            }
+        }
+        if (sum(sim.data.fixation$lost) > 0){
+
+            sim.data.fixation %>%
+                ungroup() %>%
+                filter(lost == TRUE) %>%
+                select(population) -> lost.pops
+            
+            for (i in unique(lost.pops$population))
+            {
+                sim.data %>% 
+                    filter(population == i, p == 0) %>%
+                    select(generation) -> s2
+                when.lost <- min(s2$generation)
+                fix.loss.table <- bind_rows(fix.loss.table, tibble("rep" = i, "allele" = "a", "gen" = when.lost))
+            }
+        }
+        
+        
+ 
+        fix.loss.table$allele <- factor(fix.loss.table$allele, levels=c("A", "a"))
+        fix.loss.table %>%
+            arrange(allele, gen) %>% 
+            rename("Simulation Replicate" = rep, 
+                   "Allele Fixed" = allele, 
+                   "Generation Fixed" = gen) -> fix.loss.table
+
+        result.table <- left_join(result.table, fix.loss.table) %>% arrange(`Allele Fixed`)
+    } else
+    {
+        result.table <- result.table %>% mutate("Allele Fixed" = "NA", "Generation Fixed" = "NA")
+    }
+
+    result.table %>%
+        mutate(`Allele A frequency` = round(`Allele A frequency`, 5), 
+               `Population fitness` = round(`Population fitness`, 5), 
+               `Population heterozygosity` = round(`Population heterozygosity`, 5)
+               )
+        
+    
+}                                
+            
+     
 
 ### WE ONLY ARE KEEPING TRACK OF THE ISLAND!!!!!!!!!!!!! ###
 simulatePopulations.migration <- function(gen,
