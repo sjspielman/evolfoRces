@@ -47,7 +47,7 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
             ),
             br(),
             div(style = "display:inline-block;",
-                plotOutput("single_plot", height = "300px", width = "1200px"),
+                plotOutput("single_plot", height = "300px", width = "1000px"),
                 br(),
                 div(style = "float:right;",
                     actionButton(inputId = "store_single_btn", label = "Click to store results.")
@@ -59,12 +59,12 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
             h3("Stored simulation"),
             tags$b(uiOutput("single_name_stored")),
             br(),
-            div(style = "float:left; font-size:12px",
+            div(style = "float:center; font-size:12px",
                 DTOutput("single_table_stored")
             ),
             br(),br(),br(),
             div(style = "display:inline-block;",
-                plotOutput("single_plot_stored", height = "300px", width = "1200px"),
+                plotOutput("single_plot_stored", height = "300px", width = "1000px"),
                 br(),
                 div(style = "float:right;",
                     actionButton(inputId = "clear_single_btn", label = "Click to clear stored results.")
@@ -77,7 +77,7 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
         sidebarPanel(width = 3, 
             sliderInput("p.main","CONTINENT fixed allele A frequency",value=0.5,min=0,max=1),
             sliderInput("p.island","ISLAND starting allele A frequency",value=0.5,min=0,max=1),
-            sliderInput("m","Migration rate, from continent to island. (Fraction of island individuals who are migrants, per generation).",value=0.05,min=0,max=0.5),
+            sliderInput("m","Migration rate to island",value=0.05,min=0,max=0.5),
             sliderInput("Waa_m","Fitness (W) of genotype AA, on ISLAND",value=1,min=0,max=1),
             sliderInput("Wab_m","Fitness (W) of genotype Aa, on ISLAND",value=0.95,min=0,max=1),
             sliderInput("Wbb_m","Fitness (W) of genotype aa, on ISLAND",value=0.90,min=0,max=1),
@@ -94,7 +94,7 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
             ),
             br(),
             div(style = "display:inline-block;",
-                plotOutput("migration_plot", height = "300px", width = "1200px"),
+                plotOutput("migration_plot", height = "300px", width = "1000px"),
                 br(),
                 div(style = "float:right;",
                     actionButton(inputId = "store_migration_btn", label = "Click to store results.")
@@ -106,12 +106,12 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
             h3("Stored simulation"),
             tags$b(uiOutput("migration_name_stored")),
             br(),
-            div(style = "float:left; font-size:12px",
+            div(style = "float:center; font-size:12px",
                 DTOutput("migration_table_stored")
             ),
             br(),br(),br(),
             div(style = "display:inline-block;",
-                plotOutput("migration_plot_stored", height = "300px", width = "1200px"),
+                plotOutput("migration_plot_stored", height = "300px", width = "1000px"),
                 br(),
                 div(style = "float:right;",
                     actionButton(inputId = "clear_migration_btn", label = "Click to clear stored results.")
