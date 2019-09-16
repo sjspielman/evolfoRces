@@ -171,4 +171,3 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
 
   
 
-
