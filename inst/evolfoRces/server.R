@@ -3,9 +3,9 @@ library(cowplot)
 library(shinyWidgets)
 library(colourpicker)
 library(DT)
-library(promises)
-library(future)
-plan(multiprocess)
+#library(promises)
+#library(future)
+#plan(multiprocess)
 
 options(htmlwidgets.TOJSON_ARGS = list(na = 'string')) ## Make NA in DT show as NA instead of blank cell
 
@@ -52,8 +52,18 @@ shinyServer(function(input,output,session){
         if (Neff > max.n) Neff = max.n
     
             
-
-       simulation_data <- future( simulatePopulations.single(gen=gen,
+# 
+#        simulation_data <- future( simulatePopulations.single(gen=gen,
+#                                                              p=p,
+#                                                              Waa=Waa,
+#                                                              Wab=Wab,
+#                                                              Wbb=Wbb,
+#                                                              Uab=Uab,
+#                                                              Uba=Uba,
+#                                                              Neff=Neff,
+#                                                              infinitePop=infinitePop,
+#                                                              nRep=nRep))
+       simulation_data <- simulatePopulations.single(gen=gen,
                                                              p=p,
                                                              Waa=Waa,
                                                              Wab=Wab,
@@ -62,7 +72,7 @@ shinyServer(function(input,output,session){
                                                              Uba=Uba,
                                                              Neff=Neff,
                                                              infinitePop=infinitePop,
-                                                             nRep=nRep))
+                                                             nRep=nRep)
                                 
 
         current_simulation$data <- simulation_data
@@ -72,15 +82,17 @@ shinyServer(function(input,output,session){
 
         output$single_table <- renderDT(rownames= FALSE, server=FALSE, 
                                 options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
-            simulation_data %...>% process_simulation(gen)
+           # simulation_data %...>% process_simulation(gen)
+           process_simulation(simulation_data, gen)
         )
         
           
         output$single_plot <- renderPlot( { 
-            simulation_data %...>% {
-                simulation_data_df <- .
-                plot_simulation(simulation_data_df, gen, input$line_color_s, infinitePop)
-            }
+            plot_simulation(simulation_data, gen, input$line_color_s, infinitePop)
+            #simulation_data %...>% {
+            #    simulation_data_df <- .
+            #    plot_simulation(simulation_data_df, gen, input$line_color_s, infinitePop)
+            #}
         })
 
     })
@@ -101,18 +113,21 @@ shinyServer(function(input,output,session){
     observeEvent(input$store_single_name, {
     
         output$single_plot_stored <- renderPlot({
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
-            }
+            plot_simulation(stored_simulation$data, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
+            #}
+            #stored_simulation$data %...>% {
+            #    stored_simulation_df <- .
+            #    plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
+            #}
         })        
         
         output$single_table_stored <- renderDT(rownames= FALSE, server=FALSE, 
                                                     options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen)
-            }
+            process_simulation(stored_simulation$data, stored_simulation$gen)
+            #stored_simulation$data %...>% {
+            #    stored_simulation_df <- .
+            #    process_simulation(stored_simulation_df, stored_simulation$gen)
+            #}
         )
         
         output$single_name_stored <- renderText({input$store_single_name})
@@ -149,14 +164,22 @@ shinyServer(function(input,output,session){
         infinitePop <- TRUE
 
         # simulate
-        simulation_data <- future( simulatePopulations.migration(gen=gen,
+#         simulation_data <- future( simulatePopulations.migration(gen=gen,
+#                                                   p.main = p.main,
+#                                                   p.island = p.island,
+#                                                   m = m,
+#                                                   Waa=Waa,
+#                                                   Wab=Wab,
+#                                                   Wbb=Wbb) %>% 
+#                                      mutate("population" = 1))
+        simulation_data <- simulatePopulations.migration(gen=gen,
                                                   p.main = p.main,
                                                   p.island = p.island,
                                                   m = m,
                                                   Waa=Waa,
                                                   Wab=Wab,
                                                   Wbb=Wbb) %>% 
-                                     mutate("population" = 1))
+                                     mutate("population" = 1)
 
 
         current_simulation$data <- simulation_data
@@ -166,15 +189,17 @@ shinyServer(function(input,output,session){
 
         output$migration_table <- renderDT(rownames= FALSE, server=FALSE, 
                                 options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
-            simulation_data %...>% process_simulation(gen)
+            #simulation_data %...>% process_simulation(gen)
+            process_simulation(simulation_data, gen)
         )
         
           
         output$migration_plot <- renderPlot( { 
-            simulation_data %...>% {
-                simulation_data_df <- .
-                plot_simulation(simulation_data_df, gen, input$line_color_m, infinitePop)
-            }
+            plot_simulation(simulation_data, gen, input$line_color_m, infinitePop)
+            #simulation_data %...>% {
+            #    simulation_data_df <- .
+            #    plot_simulation(simulation_data_df, gen, input$line_color_m, infinitePop)
+            #}
         })
 
     })
@@ -195,18 +220,20 @@ shinyServer(function(input,output,session){
     observeEvent(input$store_migration_name, {
     
         output$migration_plot_stored <- renderPlot({
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
-            }
+            plot_simulation(stored_simulation$data, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
+            #stored_simulation$data %...>% {
+            #    stored_simulation_df <- .
+            #    plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
+            #}
         })        
         
         output$migration_table_stored <- renderDT(rownames= FALSE, server=FALSE, 
                                                     options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen)
-            }
+            process_simulation(stored_simulation$data, stored_simulation$gen)
+            #stored_simulation$data %...>% {
+            #    stored_simulation_df <- .
+            #    process_simulation(stored_simulation_df, stored_simulation$gen)
+            #}
         )
         
         output$migration_name_stored <- renderText({input$store_migration_name})

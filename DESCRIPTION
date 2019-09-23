@@ -5,7 +5,7 @@ Version: 0.1.0
 Author: Stephanie J. Spielman
 Maintainer: Stephanie J. Spielman <spielman@rowan.edu>
 Description: Simulate single populations or island-continent model
-Imports: tidyverse, cowplot, viridis, shiny, shinyWidgets, shinythemes, colourpicker, DT, promises, future
+Imports: tidyverse, cowplot, viridis, shiny, shinyWidgets, shinythemes, colourpicker, DT
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
