@@ -55,19 +55,16 @@ plot_simulation <- function(sim.data, gen, line_color, is_infinite)
 
 process_simulation <- function(sim.data, gen)
 {
-    ## Table of final generation
-    sim.data %>% filter(generation == gen) -> final.generation
-
-    final.generation %>% mutate("het" = 2*p*(1-p)) -> final.generation
-
-
-    result.table <- tibble("Simulation Replicate" = final.generation$population,
-                           "Allele A frequency" = final.generation$p, 
-                           "Population fitness" = final.generation$w,
-                           "Population heterozygosity" = final.generation$het)
-
-
-    #write_csv(sim.data, "sim.csv")
+    ## before/after basics
+    sim.data %>% 
+        filter(generation %in% c(0,gen)) %>% 
+        mutate(generation = ifelse(generation == 0, "Before simulation", "After simulation"),
+               het = 2*p*(1-p)) %>%
+        rename("Simulation Replicate" = population,
+               "Time Point" = generation,
+               "Allele A frequency" = p,
+               "Population fitness" = w,
+               "Population heterozygosity" = het) -> result.table
     
     sim.data %>% 
         group_by(population) %>%
@@ -125,20 +122,26 @@ process_simulation <- function(sim.data, gen)
             arrange(allele, gen) %>% 
             rename("Simulation Replicate" = rep, 
                    "Allele Fixed" = allele, 
-                   "Generation Fixed" = gen) -> fix.loss.table
+                   "Generation Fixed" = gen) %>%
+            mutate("Time Point" = "After simulation") -> fix.loss.table
 
-        result.table <- left_join(result.table, fix.loss.table) %>% arrange(`Allele Fixed`)
+        result.table <- left_join(result.table, fix.loss.table) 
     } else
     {
         result.table <- result.table %>% mutate("Allele Fixed" = "NA", "Generation Fixed" = "NA")
     }
 
     result.table %>%
-        mutate(`Allele A frequency` = round(`Allele A frequency`, 5), 
+        mutate(`Time Point`         = factor(result.table$`Time Point`, levels=c("Before simulation", "After simulation")),
+               `Allele A frequency` = round(`Allele A frequency`, 5), 
                `Population fitness` = round(`Population fitness`, 5), 
-               `Population heterozygosity` = round(`Population heterozygosity`, 5)
-               )
-        
+               `Population heterozygosity` = round(`Population heterozygosity`, 5),
+               `Allele Fixed` = case_when(`Time Point` == "Before simulation" ~ " ", 
+                                          `Time Point` == "After simulation" & `Allele Fixed` == "A" ~ "A",
+                                          `Time Point` == "After simulation" & `Allele Fixed` == "a" ~ "a"),
+               `Generation Fixed` = ifelse(`Time Point` == "Before simulation", " ", `Generation Fixed`)) %>%
+        arrange(`Simulation Replicate`, `Time Point`) 
+
     
 }                                
             
