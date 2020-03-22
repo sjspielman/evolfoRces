@@ -72,7 +72,7 @@ shinyServer(function(input,output,session){
 
         output$single_table <- renderDT(rownames= FALSE, server=FALSE, 
                                 options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
-            simulation_data %...>% process_simulation(gen)
+            simulation_data %...>% process_simulation(gen, infinitePop)
         )
         
           
@@ -111,7 +111,7 @@ shinyServer(function(input,output,session){
                                                     options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
             stored_simulation$data %...>% {
                 stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen)
+                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
             }
         )
                 
@@ -119,7 +119,7 @@ shinyServer(function(input,output,session){
                                                     options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
             stored_simulation$data %...>% {
                 stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen)
+                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
             }
         )
         
@@ -174,7 +174,7 @@ shinyServer(function(input,output,session){
 
         output$migration_table <- renderDT(rownames= FALSE, server=FALSE, 
                                 options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
-            simulation_data %...>% process_simulation(gen)
+            simulation_data %...>% process_simulation(gen, infinitePop)
         )
         
           
@@ -213,7 +213,7 @@ shinyServer(function(input,output,session){
                                                     options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
             stored_simulation$data %...>% {
                 stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen)
+                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
             }
         )
         

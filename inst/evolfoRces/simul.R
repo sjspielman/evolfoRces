@@ -53,7 +53,7 @@ plot_simulation <- function(sim.data, gen, line_color, is_infinite)
 
 
 
-process_simulation <- function(sim.data, gen)
+process_simulation <- function(sim.data, gen, infinitePop)
 {
     ## before/after basics
     sim.data %>% 
@@ -140,8 +140,13 @@ process_simulation <- function(sim.data, gen)
                                           `Time Point` == "After simulation" & `Allele Fixed` == "A" ~ "A",
                                           `Time Point` == "After simulation" & `Allele Fixed` == "a" ~ "a"),
                `Generation Fixed` = ifelse(`Time Point` == "Before simulation", " ", `Generation Fixed`)) %>%
-        arrange(`Simulation Replicate`, `Time Point`) 
-
+        arrange(`Simulation Replicate`, `Time Point`) -> result.table
+    
+    if (!(infinitePop)){
+        result.table %>%
+            filter(`Time Point` == "After simulation") -> result.table
+    }
+    result.table
     
 }                                
             
