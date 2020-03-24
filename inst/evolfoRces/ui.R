@@ -42,37 +42,15 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
         mainPanel(width=9,
             h3("Single population simulation results"),
             br(),
-            div(style = "float:center; font-size:12px",
+            div(style = "float:center; font-size:16px",
                 DTOutput("single_table")
             ),
             br(),
             div(style = "display:inline-block;",
-                plotOutput("single_plot", height = "300px", width = "1000px"),
-                br(),
-                div(style = "float:right;",
-                    actionButton(inputId = "store_single_btn", label = "Click to store results.")
-                )
-            ),
-            br(), 
-            tags$hr(),
-
-            h3("Stored simulation"),
-            tags$b(uiOutput("single_name_stored")),
-            br(),
-            div(style = "float:center; font-size:12px",
-                DTOutput("single_table_stored")
-            ),
-            br(),br(),br(),
-            div(style = "display:inline-block;",
-                plotOutput("single_plot_stored", height = "300px", width = "1000px"),
-                br(),
-                div(style = "float:right;",
-                    actionButton(inputId = "clear_single_btn", label = "Click to clear stored results.")
-                )
+                plotOutput("single_plot", height = "750px", width = "1000px")
             )
-        )
 
-    ),
+    )),
     tabPanel("Migration",
         sidebarPanel(width = 3, 
             sliderInput("p.main","CONTINENT fixed allele A frequency",value=0.5,min=0,max=1),
@@ -89,37 +67,15 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
        mainPanel(width = 9, 
             h3("Island-continent simulation results"),
             br(),
-            div(style = "float:center; font-size:12px",
+            div(style = "float:center; font-size:16px",
                 DTOutput("migration_table")
             ),
             br(),
             div(style = "display:inline-block;",
-                plotOutput("migration_plot", height = "300px", width = "1000px"),
-                br(),
-                div(style = "float:right;",
-                    actionButton(inputId = "store_migration_btn", label = "Click to store results.")
-                )
-            ),
-            br(), 
-            tags$hr(),
-
-            h3("Stored simulation"),
-            tags$b(uiOutput("migration_name_stored")),
-            br(),
-            div(style = "float:center; font-size:12px",
-                DTOutput("migration_table_stored")
-            ),
-            br(),br(),br(),
-            div(style = "display:inline-block;",
-                plotOutput("migration_plot_stored", height = "300px", width = "1000px"),
-                br(),
-                div(style = "float:right;",
-                    actionButton(inputId = "clear_migration_btn", label = "Click to clear stored results.")
-                )
+                plotOutput("migration_plot", height = "750px", width = "1000px") #,
             )
-        )
 
-    ),
+    )),
     tabPanel("About and Help",            
         div(style = "width:80%;  font-size:16px; float:center; text-align:left;",
             p("This Shiny application allows users to visualize how evolutionary forces affect i) allele frequencies and b) population fitness over time. Source code and licensing for this app is available from", tags$a(href = "https://github.com/spielmanlab/evolforRces", "https://github.com/spielmanlab/evolforRces"),".This application is primarily intended for classroom use."),

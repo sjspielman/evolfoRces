@@ -8,9 +8,9 @@ max.rep <- 50
 max.n   <- 100000                    
 
 
-line.size <- 1
-t1 <- 12
-t2 <- 14
+line.size <- 1.5
+t1 <- 15
+t2 <- 18
 theme_set(theme_classic() + theme(legend.position = "none", 
                                   axis.text = element_text(size=t1),
                                   axis.title = element_text(size=t2)))
@@ -45,10 +45,10 @@ plot_simulation <- function(sim.data, gen, line_color, is_infinite)
         p1 <- p1 + scale_color_manual(values = line_color)
         p2 <- p2 + scale_color_manual(values = line_color)
     } else {
-        p1 <- p1 + scale_color_viridis()
-        p2 <- p2 + scale_color_viridis()
+        p1 <- p1 + scale_color_viridis(alpha = 0.65)
+        p2 <- p2 + scale_color_viridis(alpha = 0.65)
     }    
-    plot_grid(p1, p2, nrow=1, scale = 0.9)
+    plot_grid(p1, p2, nrow=2, scale = 0.97)
 }
 
 

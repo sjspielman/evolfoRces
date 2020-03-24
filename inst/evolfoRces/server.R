@@ -98,42 +98,6 @@ shinyServer(function(input,output,session){
        stored_simulation$line_color  <- input$line_color_s
     })
         
-    observeEvent(input$store_single_name, {
-    
-        output$single_plot_stored <- renderPlot({
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
-            }
-        })        
-
-        output$single_table_beforeafter_stored <- renderDT(rownames= FALSE, server=FALSE, 
-                                                    options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
-            }
-        )
-                
-        output$single_table_fixation_stored <- renderDT(rownames= FALSE, server=FALSE, 
-                                                    options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
-            }
-        )
-        
-        output$single_name_stored <- renderText({input$store_single_name})
-
-    })    
-    
-    observeEvent(input$clear_single_btn, {
-        stored_simulation <- reactiveValues()
-        output$single_name_stored  <- renderText({})
-        output$single_table_stored <- renderDT({})
-        output$single_plot_stored <- renderPlot({})
-    })
-    
     
     ######################################################################################
     ############################### MIGRATION TAB ########################################
@@ -185,47 +149,6 @@ shinyServer(function(input,output,session){
             }
         })
 
-    })
-    
-    
-    observeEvent(input$store_migration_btn,  {
-        inputSweetAlert(
-            session = session, inputId = "store_migration_name",
-            title = "Name for your stored results?",
-            type = "warning"
-        )    
-       stored_simulation$data        <- current_simulation$data
-       stored_simulation$gen         <- current_simulation$gen
-       stored_simulation$infinitePop <- current_simulation$infinitePop     
-       stored_simulation$line_color  <- input$line_color_m
-    })
-        
-    observeEvent(input$store_migration_name, {
-    
-        output$migration_plot_stored <- renderPlot({
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                plot_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$line_color, stored_simulation$infinitePop)
-            }
-        })        
-        
-        output$migration_table_stored <- renderDT(rownames= FALSE, server=FALSE, 
-                                                    options = list(dom = 'tp', columnDefs = list(list(className = 'dt-center', targets = "_all"))),
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
-            }
-        )
-        
-        output$migration_name_stored <- renderText({input$store_migration_name})
-
-    })    
-    
-    observeEvent(input$clear_migration_btn, {
-        stored_simulation <- reactiveValues()
-        output$migration_name_stored  <- renderText({})
-        output$migration_table_stored <- renderDT({})
-        output$migration_plot_stored <- renderPlot({})
     })
     
 
