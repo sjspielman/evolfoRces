@@ -139,6 +139,7 @@ process_simulation <- function(sim.data, gen, infinitePop)
                `Allele Fixed` = case_when(`Time Point` == "Before simulation" ~ " ", 
                                           `Time Point` == "After simulation" & `Allele Fixed` == "A" ~ "A",
                                           `Time Point` == "After simulation" & `Allele Fixed` == "a" ~ "a"),
+               `Allele Fixed` = factor(`Allele Fixed`),
                `Generation Fixed` = ifelse(`Time Point` == "Before simulation", " ", `Generation Fixed`)) %>%
         arrange(`Simulation Replicate`, `Time Point`) -> result.table
     
