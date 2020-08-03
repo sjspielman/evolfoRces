@@ -122,7 +122,7 @@ ui <- shinyUI(navbarPage(theme = shinytheme("flatly"), "evolfoRces: Two-allele p
     ),
     tabPanel("About and Help",            
         div(style = "width:80%;  font-size:16px; float:center; text-align:left;",
-            p("This Shiny application allows users to visualize how evolutionary forces affect i) allele frequencies and b) population fitness over time. Source code and licensing for this app is available from", tags$a(href = "https://github.com/spielmanlab/evolforRces", "https://github.com/spielmanlab/evolforRces"),".This application is primarily intended for classroom use."),
+            p("This Shiny application allows users to visualize how evolutionary forces affect i) allele frequencies and b) population fitness over time. Source code and licensing for this app is available from", tags$a(href = "https://github.com/sjspielman/evolforRces", "https://github.com/sjspielman/evolforRces"),".This application is primarily intended for classroom use."),
             br(),
             p("Written and maintained by ", tags$a(href = "http://spielmanlab.io", "Stephanie J. Spielman, PhD"), ", with many thanks to CJ Battey's excellent", tags$a(href = "https://github.com/cjbattey/driftR", "driftr Shiny app"), " for inspiration."),
             br(),br(),
