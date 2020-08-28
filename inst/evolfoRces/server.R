@@ -107,15 +107,15 @@ shinyServer(function(input,output,session){
             }
         })        
 
-        output$single_table_beforeafter_stored <- renderDT(rownames= FALSE, server=FALSE, 
-                                                    options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
-            stored_simulation$data %...>% {
-                stored_simulation_df <- .
-                process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
-            }
-        )
+       # output$single_table_beforeafter_stored <- renderDT(rownames= FALSE, server=FALSE, 
+       #                                             options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
+       #     stored_simulation$data %...>% {
+       #         stored_simulation_df <- .
+       #         process_simulation(stored_simulation_df, stored_simulation$gen, stored_simulation$infinitePop)
+       #     }
+       # )
                 
-        output$single_table_fixation_stored <- renderDT(rownames= FALSE, server=FALSE, 
+        output$single_table_stored <- renderDT(rownames= FALSE, server=FALSE, 
                                                     options = list(dom = 'tp', columnDefs = list(list(className = 'dt-left', targets = "_all"))),
             stored_simulation$data %...>% {
                 stored_simulation_df <- .
