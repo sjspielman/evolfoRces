@@ -1,6 +1,6 @@
 # evolfoRces
 
-Population genetics simulations for students to learn about **evol**utionary **foRces**. Consistent with CRAN Law, this package has a capital R in its name.
+Population genetics simulations for students to learn about **evol**utionary **foRces**. Consistent with R Law, this package has a capital R in its name.
 
 
 This Shiny application (inspired by CJ Battey's [driftr Shiny app](https://github.com/cjbattey/driftR)) allows users to visualize how evolutionary forces affect i) allele frequencies and b) population fitness over time.
